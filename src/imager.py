@@ -1,41 +1,57 @@
 from PIL import Image
 
 
+# assumption
+# dimensions 1920 x 1080
+# square size 4x4
+# fps 30
+# bits per frame: (1920×1080)/(4×4) = 129,600
+chunk_size = 129_600
 
-def create_image_from_bits(bits, width, height, square_size):
-    # Calculate the number of squares in each dimension
-    num_squares_x = width // square_size
-    num_squares_y = height // square_size
 
-    # Create a new image with white background
-    img = Image.new('RGB', (width, height), 'white')
-    pixels = img.load()
+# split bit stream so we can fit it into a frame. each frame can contain 129600 bits
+def split_bit_stream(bits, chunk_size):
+    return [bits[i:i+chunk_size] for i in range(0, len(bits), chunk_size)]
 
-    # Iterate through bits and draw squares accordingly
-    for i in range(len(bits)):
-        # Calculate the position of the current square
-        row = i // num_squares_x
-        col = i % num_squares_x
 
-        # Calculate the coordinates of the square
-        x = col * square_size
-        y = row * square_size
 
-        # Draw a black square if the bit is 1, otherwise draw a white square
-        color = (0, 0, 0) if bits[i] == '1' else (255, 255, 255)
+def bits_to_image(bit_string):
+    # Define color mapping
+    color_mapping = {
+        "00": (255, 0, 0),    # Red
+        "01": (0, 255, 0),    # Green
+        "11": (0, 0, 255),    # Blue
+        "10": (255, 255, 255)  # White
+    }
 
-        # Draw the square
-        for j in range(square_size):
-            for k in range(square_size):
-                pixels[x + j, y + k] = color
+    # Create a new image with the specified size
+    width, height = 1920, 1080
+    image = Image.new("RGB", (width, height))
 
-    return img
+    # Iterate through the bit string and create pixels
+    pixel_size = 4
+    index = 0
+    for y in range(0, height, pixel_size):
+        for x in range(0, width, pixel_size):
+            # Extract 2 bits from the bit string
+            bits = bit_string[index:index+2]
+            index += 2
 
-# Example usage
-bits_string = "11001100110011001100101001010101010101010100101010101010101010101010101001010101010101011100"  # Replace this with your actual bit string
-image_width = 1920
-image_height = 1080
-square_size = 8
+            # Stop if there are not enough bits
+            if len(bits) < 2:
+                break
 
-image = create_image_from_bits(bits_string, image_width, image_height, square_size)
-image.show()
+            # Map bits to color
+            color = color_mapping.get(bits, (0, 0, 0))
+
+            # Fill the 4x4 pixel block with the mapped color
+            for dy in range(pixel_size):
+                for dx in range(pixel_size):
+                    image.putpixel((x + dx, y + dy), color)
+
+    # Save the image
+    image.save("output_image.png")
+
+
+
+
