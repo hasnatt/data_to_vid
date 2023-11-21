@@ -1,4 +1,6 @@
 from PIL import Image
+import cv2
+import os
 
 
 # assumption
@@ -6,13 +8,12 @@ from PIL import Image
 # square size 4x4
 # fps 30
 # bits per frame: (1920×1080)/(4×4) = 129,600
-chunk_size = 129_600
+
 
 
 # split bit stream so we can fit it into a frame. each frame can contain 129600 bits
 def split_bit_stream(bits, chunk_size):
     return [bits[i:i+chunk_size] for i in range(0, len(bits), chunk_size)]
-
 
 
 def bits_to_image(bit_string):
@@ -50,7 +51,34 @@ def bits_to_image(bit_string):
                     image.putpixel((x + dx, y + dy), color)
 
     # Save the image
-    image.save("output_image.png")
+    return image
+
+
+def images_to_video(images_folder, output_video_path, fps=30, file_extension=".png"):
+    # Get the list of image files in the directory
+    image_files = [img for img in os.listdir(images_folder) if img.endswith(file_extension)]
+
+    # Sort the image files to ensure the correct order
+    image_files.sort()
+
+    # Get the first image to extract its dimensions
+    first_image = cv2.imread(os.path.join(images_folder, image_files[0]))
+    height, width, _ = first_image.shape
+
+    # Define the codec and create VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # You can also use 'XVID' or 'MJPG' codecs
+    video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
+
+    # Iterate through the images and write them to the video file
+    for image_file in image_files:
+        image_path = os.path.join(images_folder, image_file)
+        frame = cv2.imread(image_path)
+        video_writer.write(frame)
+
+    # Release the VideoWriter object
+    video_writer.release()
+
+    # print(f"Video created successfully at {output_video_path}")
 
 
 
